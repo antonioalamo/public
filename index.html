@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Bible Reference</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            text-align: center;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .reference {
+            font-size: 2em;
+            margin: 20px 0;
+        }
+        .button {
+            padding: 10px 20px;
+            font-size: 1em;
+            color: white;
+            background-color: #007bff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="reference" id="reference">Click the button to generate a reference</div>
+        <button class="button" onclick="generateRandomReference()">Generate Random Reference</button>
+    </div>
+
+    <script>
+        const gospels = ["Mt", "Mk", "Lk", "Jn"];
+
+        function generateRandomReference() {
+            const book = gospels[Math.floor(Math.random() * gospels.length)];
+            const chapter = Math.floor(Math.random() * 28) + 1;
+            const verse = Math.floor(Math.random() * 50) + 1;
+            document.getElementById('reference').innerText = `${book} ${chapter}:${verse}`;
+        }
+    </script>
+</body>
+</html>
