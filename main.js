@@ -24,15 +24,33 @@ async function fetchData(symbol, interval) {
         interval,
         limit: 1000
     });
-    const response = await fetch(`${baseUrl}?${params}`);
-    const data = await response.json();
-    return data.map(item => ({
-        timestamp: new Date(item[0]),
-        close: parseFloat(item[4])
-    }));
+
+    try {
+        const response = await fetch(`${baseUrl}?${params}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
+        if (!Array.isArray(data) || data.length === 0) {
+            throw new Error('Empty or invalid response data');
+        }
+        return data.map(item => ({
+            timestamp: new Date(item[0]),
+            close: parseFloat(item[4])
+        }));
+    } catch (error) {
+        console.error('Error fetching data:', error);
+        return []; // Return empty array to handle the error gracefully
+    }
 }
 
+
 function calculateRSI(data, period = 14) {
+    if (data.length < period + 1) {
+        console.warn(`Not enough data points (${data.length}) to calculate RSI for period ${period}`);
+        return null; // Return null or handle gracefully based on your application logic
+    }
+
     let gains = 0, losses = 0;
 
     for (let i = 1; i <= period; i++) {
@@ -53,20 +71,37 @@ function calculateRSI(data, period = 14) {
     return rsi;
 }
 
+
 async function processInterval(symbol, interval, rsiPeriod = 14) {
-    const data = await fetchData(symbol, interval);
-    const rsi = calculateRSI(data.slice(-rsiPeriod));
-    const message = `Last RSI for ${symbol} on ${interval}: ${rsi.toFixed(2)}`;
-    console.log(message);
+    try {
+        const data = await fetchData(symbol, interval);
+        if (!data || data.length === 0) {
+            console.warn(`No data fetched for ${symbol} - ${interval}`);
+            return { rsi: null, interval };
+        }
 
-    if (rsi < 30 || rsi > 70) {
-        const alertMessage = `RSI Alert: ${message}`;
-        console.log('%c' + alertMessage, 'color: red');
-        alert(alertMessage);
+        const rsi = calculateRSI(data.slice(-rsiPeriod));
+        if (rsi === null || isNaN(rsi)) {
+            console.warn(`Unable to calculate RSI for ${symbol} - ${interval}`);
+            return { rsi: null, interval };
+        }
+
+        const message = `Last RSI for ${symbol} on ${interval}: ${rsi.toFixed(2)}`;
+        console.log(message);
+
+        if (rsi < 30 || rsi > 70) {
+            const alertMessage = `RSI Alert: ${message}`;
+            console.log('%c' + alertMessage, 'color: red');
+            // alert(alertMessage); // Optionally alert the user
+        }
+
+        return { rsi, interval };
+    } catch (error) {
+        console.error(`Error processing ${symbol} - ${interval}:`, error);
+        return { rsi: null, interval }; // Return null RSI to indicate error
     }
-
-    return { rsi, interval };
 }
+
 
 async function processBTC() {
     const currentPrice = await getCurrentPrice('BTCUSDT');
