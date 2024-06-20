@@ -1,127 +1,111 @@
-// Configuration properties (this can be loaded dynamically)
 const config = {
-    "SANTIAGOX": {
-        "ApiBaseUrl": "https://www.bolsadesantiago.com",
-        "ApiPriceSummary": "/api/RV_Instrumentos/getResumenPrecios",
-        "ApiLastTransactions": "/api/RV_Instrumentos/getUltimasTransacciones",
-        "STOCKS": ["SOQUICOM", "PLANVITAL", "ILC", "SQM-B"]
+    APP: {
+        WaitingSeconds: 120
     },
-    "HEADERS": {
-        "Referer": "https://www.bolsadesantiago.com/resumen_instrumento/",
-        "Host": "www.bolsadesantiago.com",
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:127.0) Gecko/20100101 Firefox/127.0",
-        "Accept": "application/json, text/plain, */*",
-        "Accept-Language": "en-US,en;q=0.5",
-        "Accept-Encoding": "gzip, deflate, br, zstd",
-        "Content-Type": "application/json;charset=utf-8",
-        "X-CSRF-Token": "aKOIbzTG-30kbiF_crbrNIp9LukoxADunj0I"
-    },
-    "APP": {
-        "WaitingSeconds": 120
+    RSI: {
+        enable: true,
+        intervals: ['1h', '4h', '1d'],
+        symbol: 'BTCUSDT'
     }
 };
 
-const dataContainer = document.getElementById('data-container');
+async function getCurrentPrice(symbol = 'BTCUSDT') {
+    const baseUrl = 'https://api.binance.com/api/v3/ticker/price';
+    const params = new URLSearchParams({ symbol });
+    const response = await fetch(`${baseUrl}?${params}`);
+    const data = await response.json();
+    return parseFloat(data.price);
+}
 
-async function fetchData(stock) {
-    const url = `${config.SANTIAGOX.ApiBaseUrl}${config.SANTIAGOX.ApiPriceSummary}`;
-    const headers = new Headers(config.HEADERS);
-    headers.set('Referer', `${config.HEADERS.Referer}${stock}`);
-    
-    const payload = JSON.stringify({ nemo: stock });
-    
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: headers,
-            body: payload
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            return data.listaResult.filter(item => item.tipo_dato === 'puntas');
+async function fetchData(symbol, interval) {
+    const baseUrl = 'https://api.binance.com/api/v3/klines';
+    const params = new URLSearchParams({
+        symbol,
+        interval,
+        limit: 1000
+    });
+    const response = await fetch(`${baseUrl}?${params}`);
+    const data = await response.json();
+    return data.map(item => ({
+        timestamp: new Date(item[0]),
+        close: parseFloat(item[4])
+    }));
+}
+
+function calculateRSI(data, period = 14) {
+    let gains = 0, losses = 0;
+
+    for (let i = 1; i <= period; i++) {
+        const difference = data[i].close - data[i - 1].close;
+        if (difference > 0) {
+            gains += difference;
         } else {
-            console.error(`Error fetching data for ${stock}:`, response.statusText);
+            losses -= difference;
         }
-    } catch (error) {
-        console.error(`Error fetching data for ${stock}:`, error);
     }
-    return [];
+
+    let avgGain = gains / period;
+    let avgLoss = losses / period;
+
+    const rs = avgGain / avgLoss;
+    const rsi = 100 - (100 / (1 + rs));
+
+    return rsi;
 }
 
-async function fetchTransactions(stock) {
-    const url = `${config.SANTIAGOX.ApiBaseUrl}${config.SANTIAGOX.ApiLastTransactions}`;
-    const headers = new Headers(config.HEADERS);
-    headers.set('Referer', `${config.HEADERS.Referer}${stock}`);
-    
-    const payload = JSON.stringify({ nemo: stock });
-    
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: headers,
-            body: payload
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            return data.listaResult.map(transaction => ({
-                price: transaction.PRECIO,
-                qty: transaction.CANTIDAD,
-                time: transaction.HORA.replace(/\b\d{1,2}\/06\/2024 \b/, '')
-            }));
-        } else {
-            console.error(`Error fetching transactions for ${stock}:`, response.statusText);
-        }
-    } catch (error) {
-        console.error(`Error fetching transactions for ${stock}:`, error);
+async function processInterval(symbol, interval, rsiPeriod = 14) {
+    const data = await fetchData(symbol, interval);
+    const rsi = calculateRSI(data.slice(-rsiPeriod));
+    const message = `Last RSI for ${symbol} on ${interval}: ${rsi.toFixed(2)}`;
+    console.log(message);
+
+    if (rsi < 30 || rsi > 70) {
+        const alertMessage = `RSI Alert: ${message}`;
+        console.log('%c' + alertMessage, 'color: red');
+        alert(alertMessage);
     }
-    return [];
+
+    return { rsi, interval };
 }
 
-async function processStock(stock) {
-    const stockData = await fetchData(stock);
-    const transactions = await fetchTransactions(stock);
-
-    displayData(stock, stockData, transactions);
+async function processBTC() {
+    const currentPrice = await getCurrentPrice('BTCUSDT');
+    console.log(`Current BTC/USDT price: ${currentPrice}`);
+    return currentPrice;
 }
 
-function displayData(stock, stockData, transactions) {
-    const stockDiv = document.createElement('div');
-    stockDiv.className = 'stock-data';
+function displayData(data) {
+    const container = document.getElementById('data-container');
+    container.innerHTML = '';
 
-    const stockTitle = document.createElement('h3');
-    stockTitle.textContent = `Stock: ${stock}`;
-    stockDiv.appendChild(stockTitle);
-
-    const stockDetails = document.createElement('pre');
-    stockDetails.textContent = JSON.stringify(stockData, null, 2);
-    stockDiv.appendChild(stockDetails);
-
-    const transactionsTitle = document.createElement('h4');
-    transactionsTitle.textContent = `Transactions:`;
-    stockDiv.appendChild(transactionsTitle);
-
-    const transactionsDetails = document.createElement('pre');
-    transactionsDetails.textContent = JSON.stringify(transactions, null, 2);
-    stockDiv.appendChild(transactionsDetails);
-
-    dataContainer.appendChild(stockDiv);
-}
-
-function clearData() {
-    dataContainer.innerHTML = '';
+    data.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'highlighted';
+        div.innerHTML = `<strong>${item.interval}</strong> RSI: ${item.rsi.toFixed(2)}`;
+        container.appendChild(div);
+    });
 }
 
 async function main() {
-    clearData();
-    const stocks = config.SANTIAGOX.STOCKS;
+    const waitingSeconds = config.APP.WaitingSeconds * 1000;
+    const intervals = config.RSI.intervals;
+    const symbol = config.RSI.symbol;
 
-    for (const stock of stocks) {
-        await processStock(stock);
+    while (true) {
+        const data = [];
+
+        for (const interval of intervals) {
+            const result = await processInterval(symbol, interval);
+            data.push(result);
+        }
+
+        await processBTC();
+
+        displayData(data);
+
+        console.log(`Waiting for ${config.APP.WaitingSeconds} seconds...`);
+        await new Promise(resolve => setTimeout(resolve, waitingSeconds));
     }
-
-    setTimeout(main, config.APP.WaitingSeconds * 1000);
 }
 
 main();
