@@ -91,6 +91,8 @@ async function main() {
     const intervals = config.RSI.intervals;
     const symbol = config.RSI.symbol;
 
+    console.log('Here')
+
     while (true) {
         const data = [];
 
