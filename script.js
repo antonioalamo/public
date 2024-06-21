@@ -1,7 +1,8 @@
 const symbol = 'BTCUSDT';
-const intervals = ['4h', '1h'];
 const waitingSeconds = 60;
 const rsiThreshold = 31;
+const intervals = ['1h', '4h'];
+
 
 async function fetchData(symbol, interval) {
     const baseUrl = 'https://api.binance.com/api/v3/klines';
@@ -22,10 +23,7 @@ async function fetchBitcoinPrice() {
     const response = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT');
     const data = await response.json();
     const price = parseFloat(data.price);
-    const bitcoinPriceElement = document.getElementById('bitcoinPrice');
-    if (bitcoinPriceElement) {
-        bitcoinPriceElement.innerText = `Current Bitcoin Price: $${price.toFixed(2)}`;
-    }
+    document.getElementById('bitcoinPrice').innerText = `Current Bitcoin Price: $${price.toFixed(2)}`;
     return price;
 }
 
@@ -67,27 +65,25 @@ async function processInterval(symbol, interval, rsiPeriod, rsiThreshold) {
     const message = `Last RSI for ${symbol} on ${interval}: ${lastRSI.toFixed(2)}`;
     console.log(message);
 
-    const outputElement = document.getElementById('output');
-    if (outputElement) {
-        outputElement.innerText = message;
-    }
+    document.getElementById(`output${interval}`).innerText += message + '\n';
 
     if (lastRSI < rsiThreshold) {
         alert(`RSI Alert! ${message}`);
         sendEmail(`RSI in ${interval}`, message);
     }
 
-    renderChart(data, rsi);
+    // renderChart(data, rsi, interval);
 }
 
-function renderChart(data, rsi) {
-    const ctx = document.getElementById('rsiChart').getContext('2d');
+
+function renderChart(data, rsi, interval) {
+    const ctx = document.getElementById(`rsiChart${interval}`).getContext('2d');
     new Chart(ctx, {
         type: 'line',
         data: {
             labels: data.slice(14).map(d => d.timestamp),
             datasets: [{
-                label: 'RSI',
+                label: `RSI (${interval})`,
                 data: rsi.slice(14),
                 borderColor: 'blue',
                 fill: false,
@@ -114,9 +110,16 @@ async function main() {
     try {
         await fetchBitcoinPrice(); // Fetch and display Bitcoin price initially
         while (true) {
+            document.getElementById('output4h').innerText = ''; // Clear previous output
+            document.getElementById('output1h').innerText = ''; // Clear previous output
+            
+            // await processInterval(symbol, '1h', 14, rsiThreshold);
+            // await processInterval(symbol, '4h', 14, rsiThreshold);
             for (const interval of intervals) {
                 await processInterval(symbol, interval, 14, rsiThreshold);
             }
+            
+            
             console.log(`Waiting for ${waitingSeconds} seconds...`);
             await new Promise(resolve => setTimeout(resolve, waitingSeconds * 1000));
         }

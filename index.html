@@ -11,25 +11,35 @@
             margin: 0;
             padding: 20px;
         }
-        #rsiChart {
+        #rsiChart4h, #rsiChart1h {
             width: 100%;
             height: 300px;
-        }
-        #output {
-            font-size: 1rem;
             margin-bottom: 20px;
+        }
+        #output4h {
+            font-size: 1.25rem;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        #output1h {
+            font-size: 1.25rem;
+            margin-bottom: 20px;
+            text-align: center;
         }
         #bitcoinPrice {
-            font-size: 1rem;
+            font-size: 1.25rem;
             margin-bottom: 20px;
+            text-align: center;
         }
     </style>
 </head>
 <body>
     <h1 style="font-size: 1.5rem; text-align: center;">RSI Notification System</h1>
-    <div id="output"></div>
     <div id="bitcoinPrice"></div>
-    <canvas id="rsiChart"></canvas>
+    <div id="output1h"></div>
+    <div id="output4h"></div>
+    <canvas id="rsiChart4h"></canvas>
+    <canvas id="rsiChart1h"></canvas>
     <script src="script.js"></script>
 </body>
 </html>
