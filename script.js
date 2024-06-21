@@ -108,10 +108,13 @@ function sendEmail(subject, message) {
 
 async function main() {
     try {
-        await fetchBitcoinPrice(); // Fetch and display Bitcoin price initially
+        
         while (true) {
+            document.getElementById('bitcoinPrice').innerText = ''; // Clear previous o
             document.getElementById('output4h').innerText = ''; // Clear previous output
             document.getElementById('output1h').innerText = ''; // Clear previous output
+
+            await fetchBitcoinPrice(); // Fetch and display Bitcoin price initially
             
             // await processInterval(symbol, '1h', 14, rsiThreshold);
             // await processInterval(symbol, '4h', 14, rsiThreshold);
